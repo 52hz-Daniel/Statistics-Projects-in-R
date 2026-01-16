@@ -1,0 +1,266 @@
+---
+title: "A2Q5"
+output: pdf_document
+date: "2025-05-31"
+---
+```{r load_and_summarise, echo=TRUE}
+
+poke_df_uncleaned <- read.csv("pokemon_subset.csv")
+poke_df_uncleaned <- poke_df_uncleaned[,-c(3:5,11:14,16:17,19)] #remove unnecessary columns
+
+#Senity check
+library(dplyr)
+
+glimpse(poke_df_uncleaned)                 # Correct column types?
+anyDuplicated(poke_df_uncleaned)           # Duplicate rows?
+
+na_map  <- summarise_all(poke_df_uncleaned, ~sum(is.na(.)))
+print(na_map)                # Count of NAs per column
+anyNA(poke_df_uncleaned)                   # TRUE/FALSE quick check
+num_cols <- select_if(poke_df_uncleaned, is.numeric)
+sapply(num_cols,           # Non-finite values (Inf, NaN)
+       function(x) sum(!is.finite(x)))
+
+#Cleaning height and weight value with no entry
+poke_df <- na.omit(poke_df_uncleaned)
+
+anyNA(poke_df) 
+
+#Get the data characters including Min, Max, Mean, Medium, quartiles, Mode, SD, Variance
+poke_df <- poke_df[,-c(7)]   #removing name since it's not necessary and not numerical
+summary(poke_df)
+var(poke_df)
+sapply(poke_df[sapply(poke_df, is.numeric)], sd, na.rm = TRUE)
+
+get_mode <- function(x) {
+  uniq <- unique(x)                            
+  uniq[which.max(tabulate(match(x, uniq)))]
+}
+
+sapply(poke_df, get_mode)
+
+
+
+```
+
+
+
+\newpage
+Question 6:
+
+
+```{r }
+library(ggplot2)
+library(readr)
+
+
+# Convert is_legendary to labeled factor
+poke_df$is_legendary <- factor(poke_df$is_legendary,
+                               levels = c(0, 1),
+                               labels = c("Non-Legendary", "Legendary"))
+
+
+
+
+#Boxplot of HP
+boxplot(poke_df$hp,
+        main = "Boxplot of Pokémon HP Stats", 
+        xlab = NULL,
+        ylab = "HP")
+
+```
+
+Boxplot: 
+We see that the distribution of HP is positively skewed. Few Pokémon have very high HP. Most are between the 40-75HP range.The boxplot of HP shows a median of 65 and an IQR from 50 to 80. The lower whisker sits at 20, and the upper whisker reaches 125. A handful of outliers extend above 125 (up to 255), confirming the long right tail seen in the histogram.
+
+
+
+```{r}
+#Histogram of HP
+hist(poke_df$hp,
+     main = "Histogram of Pokémon HP Stats", 
+     xlab = "HP",
+     ylab = "Frequency")
+```
+
+Histogram for HP
+The graph has a positive skew. We see this as the tail stretches to the right which indicates that a few Pokémon have very high HP. The histogram of HP is strongly right-skewed. Most Pokémon have HP between 50 and 80, with a peak near 60–65. A thin tail continues past 100, and a few outliers extend as high as 255.
+
+
+```{r}
+#Boxplot of attack
+boxplot(poke_df$attack,
+        main = "Boxplot of attack",
+        ylab = "Attack")
+```
+The boxplot of attack shows a median of 75 and an IQR from 55 to 100. The lower whisker extends down to about 5, and the upper whisker reaches roughly 167. A few points above 167 appear as outliers, matching the long right tail seen in the histogram.
+
+```{r}
+#Histogram of attack
+hist(poke_df$attack,
+     main = "Histogram of attack",
+     xlab = "Attack",
+     ylab = "Frequency")
+```
+The histogram of attack is right-skewed. Most values lie between 55 and 100, with a peak around 70–80. A long tail extends beyond 160, where a handful of very high-attack outliers push up to 185.
+
+
+```{r}
+#Boxplot of defense
+boxplot(poke_df$defense,
+        main = "Boxplot of defense",
+        ylab = "Defense")
+```
+The boxplot of defense shows a median of 70 and an IQR from 50 to 90. The lower whisker drops to about 5, and the upper whisker sits near 150. Several outliers above 150 confirm the right skew shown in the histogram.
+
+
+```{r}
+#Histogram of defense
+hist(poke_df$defense,
+     main = "Histogram of defense",
+     xlab = "Defense",
+     ylab = "Frequency")
+```
+The histogram of defense is noticeably right-skewed. Most defense values fall between 50 and 90, with a mode around 60–70. A tail tapers off past 100, and a few extreme outliers reach up to 230.
+
+
+```{r}
+
+#Boxplot of speed
+boxplot(poke_df$speed,
+        main = "Boxplot of speed",
+        ylab = "Speed")
+```
+The boxplot of speed shows a median of 65 and an IQR from 45 to 85. The lower whisker is at about 5, and the upper whisker is around 145. A handful of outliers above 145 (up to 180) match the right skew in the histogram.
+
+
+```{r}
+#Histogram of speed
+hist(poke_df$speed,
+     main = "Histogram of speed",
+     xlab = "Speed",
+     ylab = "Frequency")
+```
+The histogram of speed is mildly right-skewed. Most speed values fall between 45 and 85, with a peak around 60. A few fast outliers extend beyond 100, reaching up to 180.
+
+
+```{r}
+
+#Boxplot of height
+boxplot(poke_df$height_m,
+        main = "Boxplot of height",
+        ylab = "Height (m)")
+```
+The boxplot of height shows a median of 1 m and an IQR from 1 m to 2 m. The lower whisker drops to 0 m, and the upper whisker reaches about 3 m. A few outliers extend beyond 3 m, up to 14 m, confirming the heavy right skew.
+
+```{r}
+#Histogram of height
+hist(poke_df$height_m,
+     main = "Histogram of height",
+     xlab = "Height (m)",
+     ylab = "Frequency")
+
+```
+The histogram of height is heavily right-skewed. Most heights fall between 1 m and 2 m, with a mode at 1 m. A long tail stretches from 3 m up to 14 m, though those very tall Pokémon are uncommon.
+
+```{r}
+#Boxplot of weight
+boxplot(poke_df$weight_kg,
+        main = "Boxplot of weight",
+        ylab = "Weight (kg)")
+```
+The boxplot of weight shows a median of 27 kg and an IQR from 9 kg to 65 kg. The lower whisker drops to about 0 kg, and the upper whisker reaches roughly 150 kg. A handful of very heavy outliers extend from 150 kg up to 999 kg, confirming the pronounced right skew.
+
+
+```{r}
+#Histogram of weight
+hist(poke_df$weight_kg,
+     main = "Histogram of weight",
+     xlab = "Weight (kg)",
+     ylab = "Frequency")
+
+```
+The histogram of height is heavily right-skewed. Most heights fall between 1 m and 2 m, with a mode at 1 m. A long tail stretches from 3 m up to 14 m, though those very tall Pokémon are uncommon.
+
+```{r legend_count, echo=TRUE, message=FALSE, warning=FALSE, fig.width=5, fig.height=4}
+
+library(ggplot2)
+
+ggplot(poke_df, aes(x = is_legendary)) +
+  geom_bar() +
+  labs(
+    title = "Count of Legendary vs Non‐Legendary Pokémon",
+    x     = "Legendary Status",
+    y     = "Number of Pokémon"
+  ) +
+  theme_minimal()
+```
+Bar graph for Legendary vs Non-Legendary Pokémon. There are 712 Non-Legendary Pokémon and 69 Legendary Pokémon. This large imbalance (91% vs. 9%) is expected in game design and should be kept in mind for later analyses/comparisons. There are way more Non-Legendary Pokémon. Around 90% of Pokémon are non-legendary.
+
+
+
+\newpage
+
+Question 7:
+
+```{r stat_boxplots, echo = TRUE, fig.height = 4, fig.width = 7}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+
+long_df <- poke_df %>%
+  select(is_legendary, attack, defense, hp, speed) %>%
+  pivot_longer(
+    cols      = c(attack, defense, hp, speed),
+    names_to  = "stat",
+    values_to = "value"
+  )
+
+#Our first hyphothesis
+#Legendary Pokémon have higher average base attack, defense, HP, and speed than non-legendary Pokémon. 
+
+ggplot(long_df, aes(x = is_legendary, y = value)) +
+  geom_boxplot() +
+  facet_wrap(~ stat, scales = "free_y") +
+  labs(
+    title = "Base Stats by Legendary Status",
+    x     = "Legendary Status",
+    y     = "Stat Value"
+  ) +
+  theme_minimal()
+
+
+```
+
+Legendary Pokémon have a median attack of 103 versus 70 for non-legendary. Their IQR (90-129) sits noticeably above the non-legendary IQR (52-95). Although there is a bit of overlap around 90–95, most legendary Pokémon clearly score higher in terms of attack.
+
+Legendary Pokémon show a median defense of 100 compared to 65 for non-legendary. The legendary IQR (90-115) lies above the non-legendary IQR (50–85). This gap suggests that legendary Pokémon almost always have stronger defense than non-legendary Pokémon.
+
+Legendary Pokémon have a median HP of 91, while non-legendary sit at 65. The legendary IQR (80–105) lies above the non-legendary IQR (50–78). Even though there are a few non-legendary Pokémon exceeding 100, most legendary Pokémon stay at the top end.
+
+Legendary Pokémon have a median speed of 99, versus 60 for non-legendary. Their IQR (85–108) is higher than the non-legendary IQR (43–80). There is hardly any overlap, which indicates that most legendary Pokémon are faster than non-legendary Pokémon.
+
+We can tell that in every facet the entire legendary box is shifted upward, so the plot visually confirms that legendaries tend to have higher central values for all four base stats.Therefore, Hypothesis 1 is highly plausible.
+
+
+```{r}
+
+
+
+#Our second hyphothesis
+#Taller Pokémon are heavier
+#Scatterplot of Weight vs. Height
+plot(poke_df$height_m, poke_df$weight_kg,
+     main = "Scatterplot of Weight vs. Height",
+     xlab = "Height (m)",
+     ylab = "Weight (kg)",
+     pch = 19,
+     col = "blue")
+
+
+```
+
+
+For #2 hypothesis, the scatter plot of height vs. weight shows a clear upward pattern, i.e., taller Pokémon generally weigh more. Most of the points form a loose upward cloud, which suggests a positive relationship between the two variables. While there is quite a bit of spread (i.e., some Pokémon with the same height have very different weights), the overall trend still seems to go up. A few very tall or heavy outliers stand out, but they do not take away from the main pattern. All of these points seem to support our hypothesis that taller Pokémon tend to be heavier.
+

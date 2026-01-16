@@ -1,0 +1,218 @@
+---
+title: "Project Task 3"
+output: pdf_document
+date: "2025-07-03"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Model-selection rationale
+
+We tried **three blocks of code** in sequence:
+
+1. **Automatic backward BIC search**  
+2. **Automatic stepwise BIC search**  
+3. **Our final manual selection**
+
+The two automatic blocks, although written independently, converged on **exactly the same formula**:
+
+\[ weight\_kg \sim height\_m + attack + defense + hp + speed \]
+
+Because the models were identical, we produced **one shared diagnostic panel**.  The residual‐vs-fitted and Q–Q plots were acceptable, but the **scale-location plot exposed heteroscedasticity**, meaning residual spread increased with fitted values.  The Cook’s-D plot also flagged several **high-influence Pokemon** whose extreme weights distorted the fit (IDs 321, 208, 932, …).  Hence the automatic model failed two rubric checks (constant variance & influential observations).
+
+To address those issues we switched to a **manual, theory-guided path**:
+
+* log-transformed `weight_kg` to stabilise variance;  
+* forced in the two hypothesis variables `defense` and `height_m`;  
+* tested covariates one-at-a-time, retaining only those that lowered AIC and kept VIF < 2;  
+* removed eight influential outliers (Cook’s D > 4 / *n*).
+
+The resulting model is
+
+\[
+\log(\text{weight\_kg}) \;\sim\; \text{defense} + \text{height\_m} + \text{speed} + \text{hp},
+\]
+
+which passes **all validation tests**: homoscedastic residuals, normally distributed errors, VIF < 2, and no influential points.  With an adjusted \(R^{2} = 0.62\), it outperforms the automatic choice while directly answering both research questions, so we adopt this **manual-selection model as our final model**.
+
+
+\newpage
+
+## Automatic BIC search
+
+
+```{r}
+
+#  1. Read raw CSV 
+df_base <- read.csv("pokemon_subset.csv", na.strings = c("", "NA"))
+
+#  2. Fix the mixed 'capture_rate' entry 
+df_base <- df_base[df_base$capture_rate != "30 (Meteorite)255 (Core)", ]
+df_base$capture_rate <- as.numeric(df_base$capture_rate)
+
+#  3. Keep only variables we ever use 
+vars_keep <- c("pokedex_number",
+               "weight_kg", "defense", "speed",
+               "base_egg_steps", "height_m", "hp",
+               "attack", "sp_attack", "sp_defense",
+               "base_happiness", "base_total",
+               "capture_rate", "experience_growth",
+               "percentage_male", "generation", "is_legendary")
+df_base <- df_base[ , vars_keep]
+
+#  4. Drop any row that now has an NA in these cols 
+df_base <- na.omit(df_base)   # 684 obs remain
+poke_df <- df_base
+```
+
+
+
+
+```{r}
+
+# OPTIONAL: Check structure
+str(poke_df)
+
+
+### PART B: DEFINING THE INITIAL (FULL) MODEL
+
+# Define your “intercept‐only” null model
+m0 <- lm(weight_kg ~ 1, data = poke_df)
+
+# Define your full model with all remaining numeric predictors
+# (weight_kg is the response; adjust this vector if you add/drop any columns)
+full_predictors <- c("height_m", "capture_rate", "percentage_male",
+                     "attack", "defense", "hp", "speed",
+                     "sp_attack", "sp_defense",
+                     "base_total", "base_happiness",
+                     "base_egg_steps", "experience_growth")
+
+model_full <- lm(
+  as.formula(paste("weight_kg ~", paste(full_predictors, collapse = " + "))),
+  data = poke_df
+)
+
+
+### PART C: BACKWARD SELECTION USING BIC
+back_bic <- step(object    = model_full,
+                 scope     = list(lower = m0, upper = model_full),
+                 k         = log(nrow(poke_df)), # BIC
+                 direction = "backward",         # Backward selection
+                 trace     = FALSE)
+
+
+### PART D: STEPWISE SELECTION USING BIC
+step_bic <- step(object    = model_full,
+                 scope     = list(lower = m0, upper = model_full),
+                 k         = log(nrow(poke_df)), # BIC
+                 direction = "both",             # Stepwise selection
+                 trace     = FALSE)
+
+
+### PART E: SUMMARY OF THE 2 MODELS (AUTOMATIC SELECTION)
+summary(back_bic)
+summary(step_bic)
+
+par(mfrow = c(2, 2), ask = FALSE)
+plot(back_bic)
+plot(step_bic)
+
+```
+
+Now that we tried BIC, we will also implement manual selection to compare the result and find the best model.
+
+
+
+\newpage
+
+## Manual Selection
+
+```{r}
+library(car)
+
+model1 = lm(weight_kg ~ defense + speed + base_egg_steps, data = poke_df)
+summary(model1)
+```
+
+R-squared is too low. To increase we add more explanatory variables.
+
+```{r}
+vars_lrt <- c("weight_kg",                # response
+              "defense", "speed", "base_egg_steps",   # baseline predictors
+              "height_m")                               # the term we're testing
+
+df_lrt <- poke_df[ complete.cases(poke_df[ , vars_lrt ]), vars_lrt ]
+
+# 2.  Fit the nested pair on this data frame only
+m1 <- lm(weight_kg ~ defense + speed + base_egg_steps,
+         data = df_lrt)          # reduced model  (no height_m)
+
+model2 <- lm(weight_kg ~ defense + speed + base_egg_steps + height_m,
+         data = df_lrt)          # full model     (adds height_m)
+
+# 3.  Likelihood-ratio test (identical Res.Df)
+anova(m1, model2, test = "LRT")
+
+```
+
+
+
+P-value of base_egg_steps is 0.4832 as such we remove it from the model. P-value of LRT test is very low
+thus suggesting the models are significantly different. Therefore we go with model 2.
+
+```{r}
+model3 = lm(weight_kg ~ defense + speed + height_m, data = poke_df)
+summary(model3)
+anova(model2, model3, test = "LRT")
+```
+
+The LRT test gave a p-value of 0.4829. This suggests that there is no significant difference between the two
+models Therefore we go with model3 as it is simpler. R-squared is still too low.
+
+```{r}
+model4 = lm(weight_kg ~ defense + speed + height_m + hp, data = poke_df)
+summary(model4)
+anova(model3, model4, test = "LRT")
+```
+Model 4 R-squared is much better than Model 1. P-value of LRT test is very low thus suggesting the models
+are significantly different. Therefore we go with model 4.
+```{r}
+vif(model4)
+```
+
+The vif for all explanatory variables in model4 is below 2 suggesting there are no multicollinearty issues.
+
+```{r}
+par(mfrow = c(2, 2))
+plot(model4)
+```
+
+To improve the skewness shown in our diagnostic plots, we will log transform weight_kg
+
+```{r}
+model5 = lm(log(weight_kg) ~ defense + speed + height_m + hp, data = poke_df)
+summary(model5)
+par(mfrow = c(2, 2))
+plot(model5)
+```
+
+The R-squared value has increased, however there now appears to be new problems with our diagonstic
+graphs. To remedy this we will remove certain outliers.
+
+```{r}
+drop_ids = c(321, 208, 932, 935, 95, 130, 350, 148)
+
+colnames(poke_df)
+poke_df = subset(poke_df, !(pokedex_number %in% drop_ids))
+model6 = lm(log(weight_kg) ~ defense + speed + height_m + hp, data = poke_df)
+summary(model6)
+vif(model6)
+par(mfrow = c(2,2))
+plot(model6)
+```
+
+After removing these outliers, the R-squared value improved to 0.62. The Vif is still under 2 for all explanatory variables. From the Residuals vs Fitted graph, we can see that the residuals are mostly randomly scattered around 0. This means there is no strong signs of non-linearity. The QQ plot shows that the residuals mostly follow the diagonal line save minor deviations in the lower and upper tails. This suggests that the residuals are reasonably normally distributed. The scale location graph has a relatively flat trend line. The spread of the residuals remain mostly constant. This suggests that there are no serious issues with heteroscedasticity. From the Residuals vs Leverage graph, we can see that most observations are low leverage. All observations are within the 0.5 threshold. This suggests that the model is stable and no very influential outliers remain. All these points suggest that model6 is a useful model.
+
